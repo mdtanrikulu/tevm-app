@@ -1,0 +1,15 @@
+{
+  "name": "tevm-app",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@ensdomains/dnsprovejs": "^0.5.1",
+    "tevm": "^1.0.0-next.44"
+  }
+}
