@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ensdomains/dnsprovejs": "^0.5.1",
+    "ethers": "^6.11.1",
     "tevm": "^1.0.0-next.44"
   }
 }
