@@ -5,9 +5,10 @@ import { createScript } from 'tevm/contract';
 import { formatAbi } from 'tevm/utils';
 
 import { abi, bytecode, deployedBytecode } from './DNSSECImpl.json';
+import { extractENSRecord } from './utils';
 
 const domain = 'gregskril.com';
-const qType  = 'TXT';
+const qType = 'TXT';
 
 const prover = DNSProver.create('https://cloudflare-dns.com/dns-query');
 const result = await prover.queryWithProof(qType, domain);
@@ -22,6 +23,9 @@ const rrsBytes = ret.map(({ rrset, sig }) => ({
   rrset: ethers.hexlify(rrset),
   sig: ethers.hexlify(sig),
 }));
+
+
+console.log(extractENSRecord(rrsBytes).at(-1));
 
 const script = createScript({
   name: 'DNSSECImpl',
