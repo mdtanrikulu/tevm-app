@@ -137,7 +137,7 @@ try {
 
   console.log("createdAddresses", createdAddresses);
 
-  memoryClient.mine();
+  await memoryClient.mine();
 
   const anchorResponse = await memoryClient.script(anchors());
   console.log("anchorResponse", anchorResponse);
