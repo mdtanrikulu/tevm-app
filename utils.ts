@@ -1,7 +1,4 @@
-type DNSRecord = {
-  rrset: string;
-  sig: string;
-};
+type DNSRecord = string[];
 
 function hexToAscii(hex: string): string {
   let result = '';
@@ -17,9 +14,9 @@ export function extractENSRecord(dnsRecords: DNSRecord[]): string[] {
   const txtRecords: string[] = [];
 
   for (const record of dnsRecords) {
-    if (record.rrset.startsWith(txtPrefix)) {
+    if (record[0].startsWith(txtPrefix)) {
       const contentStart = txtPrefix.length;
-      const rawContent = record.rrset.slice(contentStart);
+      const rawContent = record[0].slice(contentStart);
       let asciiContent = hexToAscii(rawContent);
 
       asciiContent = asciiContent.split('\t').join();

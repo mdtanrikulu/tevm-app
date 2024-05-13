@@ -3,9 +3,9 @@ import { DNSProver } from '@ensdomains/dnsprovejs';
 import { ethers } from 'ethers';
 
 import { createContract, createScript } from 'tevm/contract';
-import { formatAbi } from 'tevm/utils';
+import { encodeDeployData, formatAbi } from 'tevm/utils';
 
-import { abi, bytecode, deployedBytecode } from './DNSSECImpl.json';
+import { abi, bytecode, deployedBytecode, args as argsDNSSECImpl } from './DNSSECImpl.json';
 import { abi as abi_RSASHA1Algorithm } from './algorithms/RSASHA1Algorithm.json';
 import { abi as abi_RSASHA256Algorithm } from './algorithms/RSASHA256Algorithm.json';
 import { abi as abi_P256SHA256Algorithm } from './algorithms/P256SHA256Algorithm.json';
@@ -22,8 +22,7 @@ const deployContract = (name: string, abi: any, address: any) => {
     name,
     humanReadableAbi: formatAbi(abi),
   }).withAddress(address);
-  const addr = contract.address;;
-  console.log('addr', addr)
+  const addr = contract.address;
   return addr;
 };
 
@@ -90,36 +89,59 @@ const ret = Array.prototype
     sig: entry.signature.data.signature,
   }));
 
-const rrsBytes = ret.map(({ rrset, sig }) => ({
-  rrset: ethers.hexlify(rrset),
-  sig: ethers.hexlify(sig),
-}));
+const rrsBytes = ret.map(({ rrset, sig }) => [
+  ethers.hexlify(rrset),
+  ethers.hexlify(sig),
+]);
 
 console.log('ENS1 record', extractENSRecord(rrsBytes).at(-1));
 
 const script = createScript({
   name: 'DNSSECImpl',
   humanReadableAbi: formatAbi(abi),
-  bytecode: `0x${bytecode.replace('0x', '')}`,
-  deployedBytecode: `0x${deployedBytecode.replace('0x', '')}`,
+  bytecode: `0x${bytecode.startsWith('0x') ? bytecode.slice(2) : bytecode}`,
+  deployedBytecode: `0x${
+    deployedBytecode.startsWith('0x')
+      ? deployedBytecode.slice(2)
+      : deployedBytecode
+  }`,
 });
 
 const memoryClient = createMemoryClient();
 
-const { verifyRRSet }: any = script.read;
+const { anchors, verifyRRSet }: any = script.read;
 const { setAlgorithm, setDigest }: any = script.write;
 
 for (let { id, addr } of algorithms) {
   setAlgorithm(id, addr);
-  console.log(`algorithm ${id} set`)
+  console.log(`algorithm ${id} set`);
 }
 
 for (let { id, addr } of digests) {
   setDigest(id, addr);
-  console.log(`digest ${id} set`)
+  console.log(`digest ${id} set`);
 }
 
 try {
+  const callData = encodeDeployData({
+    abi: script.abi,
+    bytecode: script.bytecode,
+    args: argsDNSSECImpl,
+  })
+
+  
+  const { createdAddresses } = await memoryClient.call({
+    createTransaction: true,
+    data: callData,
+  })
+
+  console.log("createdAddresses", createdAddresses);
+
+  memoryClient.mine();
+
+  const anchorResponse = await memoryClient.script(anchors());
+  console.log("anchorResponse", anchorResponse);
+
   const response = await memoryClient.script(
     verifyRRSet(rrsBytes, (Date.now() / 1000).toFixed(0))
   );
