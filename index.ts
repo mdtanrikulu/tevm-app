@@ -107,20 +107,7 @@ const script = createScript({
   }`,
 });
 
-const memoryClient = createMemoryClient();
-
-const { anchors, verifyRRSet }: any = script.read;
-const { setAlgorithm, setDigest }: any = script.write;
-
-for (let { id, addr } of algorithms) {
-  setAlgorithm(id, addr);
-  console.log(`algorithm ${id} set`);
-}
-
-for (let { id, addr } of digests) {
-  setDigest(id, addr);
-  console.log(`digest ${id} set`);
-}
+const memoryClient = createMemoryClient({ loggingLevel: "debug" });
 
 try {
   const callData = encodeDeployData({
@@ -130,21 +117,61 @@ try {
   })
 
   
-  const { createdAddresses } = await memoryClient.call({
+  const { createdAddresses } = await memoryClient.tevmCall({
     createTransaction: true,
-    data: callData,
+    data: callData
   })
 
-  console.log("createdAddresses", createdAddresses);
+  if (!createdAddresses) throw "no contract deployed";
 
-  await memoryClient.mine();
+  const addrDNSSECImpl = Array.from(createdAddresses)[0];
 
-  const anchorResponse = await memoryClient.script(anchors());
+  await memoryClient.tevmMine();
+
+  for (let { id, addr } of digests) {
+    await memoryClient.tevmContract({
+      to: addrDNSSECImpl,
+      abi: script.abi,
+      functionName: 'setDigest',
+      args: [id, addr]
+    });
+    await memoryClient.tevmMine();
+    console.log(`digest ${id} set`);
+  }
+
+  for (let { id, addr } of algorithms) {
+    await memoryClient.tevmContract({
+      to: addrDNSSECImpl,
+      abi: script.abi,
+      functionName: 'setAlgorithm',
+      args: [id, addr]
+    });
+    await memoryClient.tevmMine();
+    console.log(`algorithm ${id} set`);
+  }
+
+  const algoResponse = await memoryClient.tevmContract({
+    to: addrDNSSECImpl,
+    abi: script.abi,
+    functionName: 'algorithms',
+    args: [7]
+  });
+  console.log("algoResponse", algoResponse);
+
+  const anchorResponse = await memoryClient.tevmContract({
+    to: addrDNSSECImpl,
+    abi: script.abi,
+    functionName: 'anchors'
+  });
   console.log("anchorResponse", anchorResponse);
 
-  const response = await memoryClient.script(
-    verifyRRSet(rrsBytes, (Date.now() / 1000).toFixed(0))
-  );
+  const response = await memoryClient.tevmContract({
+    to: addrDNSSECImpl,
+    abi: script.abi,
+    functionName: 'verifyRRSet',
+    args: [rrsBytes]
+  });
+
   console.log(response);
 } catch (error) {
   console.log('error', error);
