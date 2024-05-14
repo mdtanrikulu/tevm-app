@@ -107,7 +107,7 @@ const script = createScript({
   }`,
 });
 
-const memoryClient = createMemoryClient({ loggingLevel: "debug" });
+const memoryClient = createMemoryClient(/*{ loggingLevel: "debug" }*/);
 
 try {
   const callData = encodeDeployData({
@@ -128,14 +128,22 @@ try {
 
   await memoryClient.tevmMine();
 
+
+  const ownerResponse = await memoryClient.tevmContract({
+    to: addrDNSSECImpl,
+    abi: script.abi,
+    functionName: 'owner',
+  });
+  const addrOwner = ownerResponse.data as any;
+
   for (let { id, addr } of digests) {
     await memoryClient.tevmContract({
       to: addrDNSSECImpl,
       abi: script.abi,
       functionName: 'setDigest',
-      args: [id, addr]
+      args: [id, addr],
+      from: addrOwner,
     });
-    await memoryClient.tevmMine();
     console.log(`digest ${id} set`);
   }
 
@@ -144,11 +152,13 @@ try {
       to: addrDNSSECImpl,
       abi: script.abi,
       functionName: 'setAlgorithm',
-      args: [id, addr]
+      args: [id, addr],
+      from: addrOwner,
     });
-    await memoryClient.tevmMine();
     console.log(`algorithm ${id} set`);
   }
+
+  await memoryClient.tevmMine();
 
   const algoResponse = await memoryClient.tevmContract({
     to: addrDNSSECImpl,
