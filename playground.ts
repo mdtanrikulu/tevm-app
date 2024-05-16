@@ -2,7 +2,7 @@ import { createMemoryClient } from '@tevm/memory-client';
 import { DNSProver } from '@ensdomains/dnsprovejs';
 import { ethers } from 'ethers';
 
-import { createContract, createScript } from 'tevm/contract';
+import { createScript } from 'tevm/contract';
 import { EthjsAddress, encodeDeployData, formatAbi } from 'tevm/utils';
 
 import {
@@ -156,6 +156,7 @@ const rrsBytes = ret.map(({ rrset, sig }) => [
 
 console.log('ENS1 record', extractENSRecord(rrsBytes).at(-1));
 
+
 const script = createScript({
   name: 'DNSSECImpl',
   humanReadableAbi: formatAbi(abi),
@@ -168,6 +169,7 @@ const script = createScript({
 });
 
 const memoryClient = createMemoryClient(/*{ loggingLevel: "debug" }*/);
+const vm = await memoryClient._tevm.getVm()
 
 try {
   const callData = encodeDeployData({
@@ -192,6 +194,9 @@ try {
     functionName: 'owner',
   });
   const addrOwner = ownerResponse.data as any;
+
+  const storageBefore = await memoryClient._tevm.getAccount({ address: addrDNSSECImpl, returnStorage: true });
+  console.log('storageBefore', storageBefore)
 
   for (let { id, callData } of digests) {
     const data = callData();
@@ -229,7 +234,16 @@ try {
     const contractAddr = Array.from(createdAddresses)[0];
     console.log('contractAddr', id, contractAddr);
 
+    const mempoolB = await memoryClient._tevm.getTxPool()
+    const mempoolBefore = await mempoolB.getBySenderAddress(EthjsAddress.fromString(addrDNSSECImpl))
+    console.log('mempoolBefore', mempoolBefore)
+
     await memoryClient.tevmMine();
+
+    const mempoolA = await memoryClient._tevm.getTxPool()
+    const mempoolAfter = await mempoolA.getBySenderAddress(EthjsAddress.fromString(addrDNSSECImpl))
+    console.log('mempoolAfter', mempoolAfter)
+
     await memoryClient.tevmContract({
       to: addrDNSSECImpl,
       abi: script.abi,
@@ -248,6 +262,34 @@ try {
     args: [13],
   });
   console.log('algoResponse', algoResponse);
+
+  const storageAfter = await memoryClient._tevm.getAccount({ address: addrDNSSECImpl, returnStorage: true });
+  console.log('storageAfter', storageAfter)
+
+
+  await vm.evm.runCall({
+    origin: addrOwner,
+    to: EthjsAddress.fromString(addrDNSSECImpl),
+    value: 1n * 10n**18n
+  })
+
+  const mempoolB = await memoryClient._tevm.getTxPool()
+  const mempoolBefore = await mempoolB.getBySenderAddress(EthjsAddress.fromString(addrDNSSECImpl))
+  console.log('mempoolBefore', mempoolBefore)
+
+  await memoryClient.tevmMine();
+
+  const mempoolA = await memoryClient._tevm.getTxPool()
+  const mempoolAfter = await mempoolA.getBySenderAddress(EthjsAddress.fromString(addrDNSSECImpl))
+  console.log('mempoolAfter', mempoolAfter)
+
+  // console.log('test', test);
+  const storageFinal = await memoryClient._tevm.getAccount({ address: addrDNSSECImpl, returnStorage: true });
+  console.log('storageFinal', storageFinal)
+  
+  // const storage = await vm.stateManager.dumpStorage(EthjsAddress.fromString(addrDNSSECImpl))
+  // console.log('storage', storage)
+
 
   const anchorResponse = await memoryClient.tevmContract({
     to: addrDNSSECImpl,
