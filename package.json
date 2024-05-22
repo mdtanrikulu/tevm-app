@@ -11,6 +11,6 @@
   "dependencies": {
     "@ensdomains/dnsprovejs": "^0.5.1",
     "ethers": "^6.11.1",
-    "tevm": "latest"
+    "tevm": "1.1.0-next.58"
   }
 }
