@@ -211,6 +211,7 @@ try {
       functionName: 'setDigest',
       args: [id, contractAddr],
       from: addrOwner,
+      createTransaction: true
     });
     await memoryClient.tevmMine();
     console.log(`digest ${id} set`);
@@ -236,18 +237,11 @@ try {
       functionName: 'setAlgorithm',
       args: [id, contractAddr],
       from: addrOwner,
+      createTransaction: true
     });
     await memoryClient.tevmMine();
     console.log(`algorithm ${id} set`);
   }
-
-  const algoResponse = await memoryClient.tevmContract({
-    to: addrDNSSECImpl,
-    abi: script.abi,
-    functionName: 'algorithms',
-    args: [13],
-  });
-  console.log('algoResponse', algoResponse);
 
   const anchorResponse = await memoryClient.tevmContract({
     to: addrDNSSECImpl,
@@ -263,7 +257,7 @@ try {
     args: [rrsBytes],
   });
 
-  console.log(response);
+  console.log("verifyRRSet", response);
 } catch (error) {
   console.log('error', error);
 }
